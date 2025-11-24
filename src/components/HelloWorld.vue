@@ -17,7 +17,7 @@ const { count } = storeToRefs(store)
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="less">
 .read-the-docs {
   color: #888;
 }
