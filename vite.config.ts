@@ -11,6 +11,16 @@ export default defineConfig({
       {
         // Main-Process entry file of the Electron App.
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                entryFileNames: '[name].cjs',
+                format: 'cjs',
+              },
+            },
+          },
+        },
       },
       {
         entry: 'electron/preload.ts',
