@@ -125,6 +125,8 @@ dist
 .idea
 .vscode/*
 !.vscode/settings.json
+!.vscode/launch.json
+
 *.suo
 *.ntvs
 *.njsproj
