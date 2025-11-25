@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron/main'
 import path from 'path'
 import fs from 'fs'
 
