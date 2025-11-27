@@ -48,6 +48,7 @@
   "dependencies": {
     "@logicflow/core": "^2.1.4",
     "element-plus": "^2.4.2",
+    "mind-elixir": "^5.3.7",
     "pinia": "^2.1.7",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5"

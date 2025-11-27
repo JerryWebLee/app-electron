@@ -10,6 +10,10 @@ const router = useRouter()
 const goToFlow = () => {
   router.push('/flow')
 }
+
+const goToMindMap = () => {
+  router.push('/mindmap')
+}
 </script>
 
 <template>
@@ -21,7 +25,10 @@ const goToFlow = () => {
         Edit
         <code class="bg-black/20 px-2 py-1 rounded">components/HelloWorld.vue</code> to test HMR
       </p>
-      <el-button type="success" size="large" @click="goToFlow" class="mt-4"> 打开流程图编辑器 </el-button>
+      <div class="button-group">
+        <el-button type="success" size="large" @click="goToFlow" class="mt-4"> 打开流程图编辑器 </el-button>
+        <el-button type="primary" size="large" @click="goToMindMap" class="mt-4"> 打开思维导图 </el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -33,6 +40,13 @@ const goToFlow = () => {
   justify-content: center;
   min-height: 100vh;
   padding: 2rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 </style>
 

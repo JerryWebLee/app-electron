@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron/main'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron/main'
 import path from 'path'
 import fs from 'fs'
 
@@ -174,6 +174,231 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('未处理的 Promise 拒绝', { reason, promise })
+})
+
+// 文件操作 IPC 处理器
+// 新建文件
+ipcMain.handle('file:new', async () => {
+  try {
+    return { success: true, data: null }
+  } catch (error) {
+    logger.error('新建文件失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 打开文件
+ipcMain.handle('file:open', async () => {
+  try {
+    if (!win) return { success: false, error: '窗口未初始化' }
+
+    const result = await dialog.showOpenDialog(win, {
+      title: '打开思维导图文件',
+      filters: [
+        { name: 'XMind 文件', extensions: ['xmind', 'json'] },
+        { name: '所有文件', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    })
+
+    if (result.canceled) {
+      return { success: false, canceled: true }
+    }
+
+    const filePath = result.filePaths[0]
+    const content = fs.readFileSync(filePath, 'utf-8')
+
+    return {
+      success: true,
+      data: {
+        path: filePath,
+        content: JSON.parse(content),
+      },
+    }
+  } catch (error) {
+    logger.error('打开文件失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 保存文件
+ipcMain.handle('file:save', async (_event, filePath: string | null, data: unknown) => {
+  try {
+    let targetPath = filePath
+
+    // 如果没有指定路径，显示保存对话框
+    if (!targetPath && win) {
+      const result = await dialog.showSaveDialog(win, {
+        title: '保存思维导图文件',
+        defaultPath: 'untitled.xmind',
+        filters: [
+          { name: 'XMind 文件', extensions: ['xmind'] },
+          { name: 'JSON 文件', extensions: ['json'] },
+        ],
+      })
+
+      if (result.canceled) {
+        return { success: false, canceled: true }
+      }
+
+      targetPath = result.filePath
+    }
+
+    if (!targetPath) {
+      return { success: false, error: '未指定保存路径' }
+    }
+
+    // 确保目录存在
+    const dir = path.dirname(targetPath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+
+    // 保存文件
+    fs.writeFileSync(targetPath, JSON.stringify(data, null, 2), 'utf-8')
+
+    logger.info('文件保存成功', { path: targetPath })
+    return { success: true, path: targetPath }
+  } catch (error) {
+    logger.error('保存文件失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 另存为
+ipcMain.handle('file:saveAs', async (_event, data: unknown) => {
+  try {
+    if (!win) return { success: false, error: '窗口未初始化' }
+
+    const result = await dialog.showSaveDialog(win, {
+      title: '另存为',
+      defaultPath: 'untitled.xmind',
+      filters: [
+        { name: 'XMind 文件', extensions: ['xmind'] },
+        { name: 'JSON 文件', extensions: ['json'] },
+      ],
+    })
+
+    if (result.canceled) {
+      return { success: false, canceled: true }
+    }
+
+    const filePath = result.filePath
+    if (!filePath) {
+      return { success: false, error: '未指定保存路径' }
+    }
+
+    // 确保目录存在
+    const dir = path.dirname(filePath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+
+    // 保存文件
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+
+    logger.info('文件另存为成功', { path: filePath })
+    return { success: true, path: filePath }
+  } catch (error) {
+    logger.error('另存为失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 导出为图片
+ipcMain.handle('file:exportImage', async (_event, imageData: string, format: 'png' | 'jpg' = 'png') => {
+  try {
+    if (!win) return { success: false, error: '窗口未初始化' }
+
+    const result = await dialog.showSaveDialog(win, {
+      title: '导出图片',
+      defaultPath: `export.${format}`,
+      filters: [
+        { name: 'PNG 图片', extensions: ['png'] },
+        { name: 'JPG 图片', extensions: ['jpg', 'jpeg'] },
+      ],
+    })
+
+    if (result.canceled) {
+      return { success: false, canceled: true }
+    }
+
+    const filePath = result.filePath
+    if (!filePath) {
+      return { success: false, error: '未指定保存路径' }
+    }
+
+    // 将 base64 数据转换为 Buffer
+    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
+    const buffer = Buffer.from(base64Data, 'base64')
+
+    // 保存文件
+    fs.writeFileSync(filePath, buffer)
+
+    logger.info('导出图片成功', { path: filePath })
+    return { success: true, path: filePath }
+  } catch (error) {
+    logger.error('导出图片失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 获取用户数据目录
+ipcMain.handle('app:getUserDataPath', async () => {
+  try {
+    const userDataPath = app.getPath('userData')
+    const mindMapDir = path.join(userDataPath, 'mindmaps')
+
+    // 确保目录存在
+    if (!fs.existsSync(mindMapDir)) {
+      fs.mkdirSync(mindMapDir, { recursive: true })
+    }
+
+    return { success: true, path: mindMapDir }
+  } catch (error) {
+    logger.error('获取用户数据目录失败', error)
+    return { success: false, error: String(error) }
+  }
+})
+
+// 自动保存到本地缓存
+ipcMain.handle('file:autoSave', async (_event, data: unknown) => {
+  try {
+    const userDataPath = app.getPath('userData')
+    const autoSaveDir = path.join(userDataPath, 'autosave')
+
+    // 确保目录存在
+    if (!fs.existsSync(autoSaveDir)) {
+      fs.mkdirSync(autoSaveDir, { recursive: true })
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const autoSavePath = path.join(autoSaveDir, `autosave-${timestamp}.json`)
+
+    fs.writeFileSync(autoSavePath, JSON.stringify(data, null, 2), 'utf-8')
+
+    // 只保留最近 10 个自动保存文件
+    const files = fs.readdirSync(autoSaveDir)
+      .filter(f => f.startsWith('autosave-') && f.endsWith('.json'))
+      .map(f => ({
+        name: f,
+        path: path.join(autoSaveDir, f),
+        time: fs.statSync(path.join(autoSaveDir, f)).mtime.getTime(),
+      }))
+      .sort((a, b) => b.time - a.time)
+
+    // 删除超过 10 个的文件
+    if (files.length > 10) {
+      files.slice(10).forEach(file => {
+        fs.unlinkSync(file.path)
+      })
+    }
+
+    return { success: true, path: autoSavePath }
+  } catch (error) {
+    logger.error('自动保存失败', error)
+    return { success: false, error: String(error) }
+  }
 })
 
 app.whenReady().then(() => {

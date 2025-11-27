@@ -11,6 +11,11 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Flow',
     component: () => import('../components/LogicFlowView.vue'),
   },
+  {
+    path: '/mindmap',
+    name: 'MindMap',
+    component: () => import('../components/MindMapView.vue'),
+  },
 ]
 
 const router = createRouter({
